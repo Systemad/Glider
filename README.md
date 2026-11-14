@@ -1,4 +1,8 @@
+## WARNING: VIBE CODED SLOP
+
 # Glider for Hacker News
+
+
 
 Android Hacker News client built with Kotlin, Jetpack Compose, Material 3 dynamic
 color, and Coroutines/Flow.
