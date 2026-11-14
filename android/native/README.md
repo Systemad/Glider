@@ -26,7 +26,7 @@ Noto Sans and Noto Sans Mono are bundled. Other original font families download 
 
 ## Migration and verification
 
-See [implementation status](../../plans/implementation-status.md) and [migration guide](../../plans/migration-guide.md). The Flutter app remains available as the behavior reference.
+Local migration notes and verification checklists live in the ignored `plans/` directory at the repository root. The original Flutter implementation remains available in Git history.
 
 Use the **T3 Code Android emulator** for integration/UI checks, then the **T3 Code connected Google Pixel 7 Pro** for screenshot comparison, gestures, wallpaper colors and manual account verification. Keep authentication actions and real posting under manual verification with the user's account. Never store account credentials in fixtures.
 
