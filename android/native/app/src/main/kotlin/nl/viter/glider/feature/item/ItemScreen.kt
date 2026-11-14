@@ -51,6 +51,11 @@ fun ItemScreen(
         )
     val state by model.state.collectAsStateWithLifecycle()
     var collapsed by rememberSaveable(id) { mutableStateOf(listOf<Long>()) }
+    var collapseAll by rememberSaveable(id) { mutableStateOf(false) }
+    var threadMenu by remember { mutableStateOf(false) }
+    LaunchedEffect(collapseAll, state.comments) {
+        if (collapseAll) collapsed = state.comments.map { it.item.id }
+    }
     var query by rememberSaveable(id) { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
     var similar by remember(id) { mutableStateOf(emptyList<HnItem>()) }
@@ -113,6 +118,24 @@ fun ItemScreen(
         }, navigationIcon = {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
         }, actions = {
+            Box {
+                IconButton(onClick = { threadMenu = true }) {
+                    Icon(Icons.Outlined.UnfoldMore, "Comment controls")
+                }
+                DropdownMenu(threadMenu, onDismissRequest = { threadMenu = false }) {
+                    DropdownMenuItem(text = { Text("Collapse all") }, onClick = {
+                        collapseAll = true
+                        collapsed = state.comments.map { it.item.id }
+                        threadMenu = false
+                        scope.launch { list.scrollToItem(0) }
+                    })
+                    DropdownMenuItem(text = { Text("Expand all") }, onClick = {
+                        collapseAll = false
+                        collapsed = emptyList()
+                        threadMenu = false
+                    })
+                }
+            }
             IconButton(onClick = {
                 searching =
                     !searching
@@ -205,6 +228,7 @@ fun ItemScreen(
                         onUser,
                         onActions
                     ) {
+                        collapseAll = false
                         collapsed =
                             if (row.item.id in
                                 collapsed
