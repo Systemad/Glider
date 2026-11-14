@@ -85,7 +85,7 @@ fun InboxScreen(
                         showHost = false,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
-                    IndentedContent(1) {
+                    IndentedContent(1, rainbow = prefs.rainbowThreads) {
                         ItemRow(
                             reply,
                             prefs,

@@ -31,6 +31,7 @@ data class Preferences(
     val pure: Boolean = false,
     val large: Boolean = true,
     val avatars: Boolean = true,
+    val rainbowThreads: Boolean = false,
     val metadata: Boolean = true,
     val favicons: Boolean = true,
     val actions: Boolean = false,

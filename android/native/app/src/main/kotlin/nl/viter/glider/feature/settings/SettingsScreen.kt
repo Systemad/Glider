@@ -74,6 +74,13 @@ fun SettingsScreen(store: AppStore, onBack: () -> Unit) {
             }
             item(key = "appearance") {
                 SettingsHeading("Appearance")
+                SettingSwitch(
+                    "Rainbow comment threads",
+                    "Use different colors for comment threads",
+                    prefs.rainbowThreads
+                ) { v ->
+                    store.update { it.copy(rainbowThreads = v) }
+                }
                 SettingSwitch("Large stories", "Shows URL and larger title", prefs.large) { v ->
                     store.update { it.copy(large = v) }
                 }

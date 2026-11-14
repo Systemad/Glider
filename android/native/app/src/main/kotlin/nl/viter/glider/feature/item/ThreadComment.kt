@@ -30,7 +30,10 @@ internal fun ThreadComment(
     onToggle: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    nl.viter.glider.shared.ui.IndentedContent(if (row.item.type == "pollopt") 0 else row.depth) {
+    nl.viter.glider.shared.ui.IndentedContent(
+        if (row.item.type == "pollopt") 0 else row.depth,
+        rainbow = prefs.rainbowThreads
+    ) {
         Surface(color = if (row.isNew) colors.surfaceColorAtElevation(4.dp) else colors.surface) {
             ItemRow(
                 row.item, prefs, onItem, onUser, onActions,
