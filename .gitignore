@@ -109,3 +109,11 @@ app.*.map.json
 !/dev/ci/**/Gemfile.lock
 !.vscode/extensions.json
 !.vscode/launch.json
+
+!android/native/gradlew
+!android/native/gradlew.bat
+!android/native/gradle/wrapper/gradle-wrapper.jar
+
+# Local planning and visual references
+/plans/
+/screenshots/

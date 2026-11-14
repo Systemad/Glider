@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application android:name="nl.viter.glider.app.GliderApplication" android:label="Glider" android:icon="@drawable/glider_icon" android:theme="@style/Theme.Glider" android:allowBackup="false">
+        <activity android:name="nl.viter.glider.app.MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+                    <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="news.ycombinator.com" android:pathPrefix="/item"/>
+                <data android:scheme="https" android:host="news.ycombinator.com" android:pathPrefix="/user"/>
+                <data android:scheme="https" android:host="news.ycombinator.com" android:pathPrefix="/submit"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
