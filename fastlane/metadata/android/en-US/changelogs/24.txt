@@ -1,3 +1,0 @@
-• Removed offline notification because it would occasionally appear while online
-• Fixed formatting of copied stories and comments
-• Allowed links to be copied

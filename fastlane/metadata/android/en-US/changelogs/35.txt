@@ -1,2 +1,0 @@
-• Implemented avatars matching "HN Avatars in 357 bytes"
-• Added menu option for selecting a post's text

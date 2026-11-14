@@ -1,2 +1,0 @@
-• Added caching to allow reading of previously opened threads while offline
-• Fixed incorrect navigation bar color on older Android versions

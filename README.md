@@ -20,5 +20,4 @@ cd android/native
 See [Android project documentation](android/native/README.md) for structure and
 device verification. Release signing is not configured.
 
-The original Flutter application is available in Git history. Store metadata and
-historical changelogs remain in `fastlane/metadata/`.
+The original Flutter application is available in Git history.

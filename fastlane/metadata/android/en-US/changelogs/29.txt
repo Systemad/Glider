@@ -1,4 +1,0 @@
-• Replaced (broken) thumbnails with favicons
-• Fixed share menu option copying instead of sharing
-• Made space and black themes more consistent in color usage
-• Fixed collapsing comment trees not working for some users

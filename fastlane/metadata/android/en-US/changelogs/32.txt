@@ -1,3 +1,0 @@
-• Fixed favicons by hosting own favicon service
-• Added setting to disable gestures to work around conflicts with system navigation gestures
-• Replaced long-press bottom sheet with bar directly below list tile
