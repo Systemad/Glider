@@ -1,8 +1,11 @@
 package nl.viter.glider.shared.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,12 +15,16 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import nl.viter.glider.shared.data.*
 
 @Composable
-internal fun StoryTitle(item: HnItem, prefs: Preferences, host: String, showHost: Boolean) {
+internal fun StoryTitle(
+    item: HnItem,
+    prefs: Preferences,
+    host: String,
+    showHost: Boolean,
+    compact: Boolean
+) {
     val style = if (prefs.large) {
         MaterialTheme.typography.titleMedium
     } else {
@@ -30,7 +37,6 @@ internal fun StoryTitle(item: HnItem, prefs: Preferences, host: String, showHost
     } else {
         2
     }
-    var faviconFailed by remember(item.url) { mutableStateOf(false) }
     val parts = remember(item.title) { splitTitle(item.title) }
     val labels =
         listOfNotNull(
@@ -50,6 +56,9 @@ internal fun StoryTitle(item: HnItem, prefs: Preferences, host: String, showHost
                     MaterialTheme.colorScheme.tertiaryContainer
             }
         )
+    val measurer = rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val labelStyle = MaterialTheme.typography.labelSmall
     val title = buildAnnotatedString {
         parts.prefix?.let {
             appendInlineContent(it, it)
@@ -73,37 +82,45 @@ internal fun StoryTitle(item: HnItem, prefs: Preferences, host: String, showHost
             }
         }
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
         Text(
             title,
             inlineContent = labels.associate { (label, color) ->
+                val labelSize = measurer.measure(label, style = labelStyle).size
+                val width =
+                    with(density) { (labelSize.width.toDp() + if (compact) 8.dp else 12.dp).toSp() }
+                val height = with(density) { (labelSize.height.toDp() + 2.dp).toSp() }
                 label to
                     InlineTextContent(
                         Placeholder(
-                            (label.length * 6.5 + 8).sp,
-                            16.sp,
-                            PlaceholderVerticalAlign.AboveBaseline
+                            width,
+                            height,
+                            PlaceholderVerticalAlign.Center
                         )
                     ) {
-                        Badge(containerColor = color, modifier = Modifier.fillMaxSize()) {
-                            Text(label, style = MaterialTheme.typography.labelSmall)
+                        Surface(
+                            color = color,
+                            shape = CircleShape,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(label, style = labelStyle, maxLines = 1, softWrap = false)
+                            }
                         }
                     }
             },
             modifier = Modifier.weight(1f),
             style = style.copy(fontWeight = FontWeight.Normal),
-            minLines = if (prefs.lines > 0) lines else 1,
             maxLines = lines,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurface
         )
-        if (showHost && prefs.favicons && host.isNotBlank() && !faviconFailed) {
-            AsyncImage(
-                model = "https://icons.viter.nl/icon?url=$host" +
-                    "&size=0..64..500&formats=gif,ico,jpg,png",
+        if (showHost && prefs.favicons && host.isNotBlank()) {
+            Icon(
+                imageVector = Icons.Outlined.Language,
                 contentDescription = null,
-                onError = { faviconFailed = true },
-                modifier = Modifier.size(if (prefs.large) 48.dp else 20.dp)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
             )
         }
     }

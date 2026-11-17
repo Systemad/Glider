@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.AnnotatedString
@@ -37,7 +38,8 @@ fun Author(
     name: String,
     prefs: Preferences,
     onUser: (String) -> Unit,
-    storyAuthor: String? = null
+    storyAuthor: String? = null,
+    compact: Boolean = false
 ) {
     Surface(
         modifier = Modifier.clickable { onUser(name) },
@@ -51,7 +53,7 @@ fun Author(
                 MaterialTheme.colorScheme.secondaryContainer
             }
         } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
+            MaterialTheme.colorScheme.surfaceContainerHighest
         },
         contentColor = if (name == prefs.username || name == storyAuthor) {
             if (name ==
@@ -63,19 +65,24 @@ fun Author(
             }
         } else {
             MaterialTheme.colorScheme.onSurface
-        },
-        tonalElevation = 1.dp,
-        shadowElevation = 1.dp
+        }
     ) {
         Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+            Modifier.padding(
+                horizontal = if (compact) 8.dp else 11.dp,
+                vertical = if (compact) 2.dp else 4.dp
+            ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (prefs.avatars) Avatar(name)
+            if (prefs.avatars) Avatar(name, if (compact) 14.dp else 16.dp)
             Text(
                 name,
-                style = MaterialTheme.typography.labelLarge,
+                style = if (compact) {
+                    MaterialTheme.typography.labelMedium
+                } else {
+                    MaterialTheme.typography.labelLarge
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -84,16 +91,22 @@ fun Author(
 }
 
 @Composable
-private fun Avatar(name: String) {
-    Canvas(Modifier.size(16.dp)) {
+private fun Avatar(name: String, iconSize: androidx.compose.ui.unit.Dp) {
+    val foreground = LocalContentColor.current
+    Canvas(Modifier.size(iconSize)) {
         val seed = name.hashCode()
-        val color = Color(0xff000000L or (seed.toLong() and 0xffffff))
-        val cell = size.width / 5
+        val color = lerp(Color(0xff000000L or (seed.toLong() and 0xffffff)), foreground, 0.65f)
+        val cell = kotlin.math.floor(size.width / 5)
+        val inset = (size.width - cell * 5) / 2
         for (y in 0..4) {
             for (x in 0..2) {
                 if ((seed ushr (y * 3 + x)) and 1 == 1) {
-                    drawRect(color, Offset(x * cell, y * cell), Size(cell, cell))
-                    drawRect(color, Offset((4 - x) * cell, y * cell), Size(cell, cell))
+                    drawRect(color, Offset(inset + x * cell, inset + y * cell), Size(cell, cell))
+                    drawRect(
+                        color,
+                        Offset(inset + (4 - x) * cell, inset + y * cell),
+                        Size(cell, cell)
+                    )
                 }
             }
         }
@@ -115,7 +128,8 @@ fun ItemRow(
     collapsedCount: Int = 0,
     storyAuthor: String? = null,
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurface
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    compact: Boolean = false
 ) {
     val host = remember(item.url) { Uri.parse(item.url).host.orEmpty() }
     val hidden = remember(item.title, item.by, host, prefs.blocked, prefs.words, prefs.domains) {
@@ -137,11 +151,11 @@ fun ItemRow(
             onClick?.invoke() ?: onItem(item.id)
         }, onLongClick = {
             onActions(item)
-        }).padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        }).padding(vertical = if (compact) 6.dp else 8.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 8.dp)
     ) {
-        if (!hidden && item.title.isNotBlank()) StoryTitle(item, prefs, host, showHost)
-        ItemMetadata(item, prefs, collapsed, collapsedCount, storyAuthor, onUser, {
+        if (!hidden && item.title.isNotBlank()) StoryTitle(item, prefs, host, showHost, compact)
+        ItemMetadata(item, prefs, collapsed, collapsedCount, storyAuthor, compact, onUser, {
             onActions(item)
         })
         when {
@@ -159,12 +173,15 @@ fun ItemRow(
 
             item.deleted -> Text("[deleted]", style = MaterialTheme.typography.bodySmall)
 
-            showBody && !collapsed && item.text.isNotBlank() -> RichText(item.text)
+            showBody && !collapsed && item.text.isNotBlank() -> RichText(
+                item.text,
+                selectable = item.type != "comment"
+            )
         }
         if (showBody && !showHost && !hidden && !collapsed &&
             item.url.isNotBlank()
         ) {
-            ArticleLink(item.url)
+            ArticleLink(item.url, showThumbnail = compact && prefs.articleThumbnails)
         }
     }
 }
@@ -176,6 +193,7 @@ private fun ItemMetadata(
     collapsed: Boolean,
     collapsedCount: Int,
     storyAuthor: String?,
+    compact: Boolean,
     onUser: (String) -> Unit,
     onActions: () -> Unit
 ) {
@@ -233,7 +251,7 @@ private fun ItemMetadata(
             )
         }
         Box(Modifier.weight(1f)) {
-            if (item.by.isNotBlank()) Author(item.by, prefs, onUser, storyAuthor)
+            if (item.by.isNotBlank()) Author(item.by, prefs, onUser, storyAuthor, compact)
         }
         if (item.by ==
             "cats4ever"

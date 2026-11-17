@@ -1,5 +1,6 @@
 package nl.viter.glider.feature.stories
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.Icons
@@ -9,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.*
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,7 +34,7 @@ fun FeedScreen(
     val state by model.state.collectAsStateWithLifecycle()
     FeedContent(state, prefs, onItem, onUser, onActions, model::select, {
         model.load(true)
-    }, { model.load() }, { model.load(state.rows.isEmpty()) })
+    }, { model.load() }, { model.load(state.rows.isEmpty()) }, model::prefetch)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,19 +48,64 @@ internal fun FeedContent(
     onKind: (String) -> Unit,
     onRefresh: () -> Unit,
     onMore: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onPrefetch: (() -> Unit)? = null
 ) {
-    Column {
-        FeedTabs(state.kind, prefs.jobs, onKind)
+    val list = rememberLazyListState()
+    val rows = remember(state.rows, prefs.jobs) {
+        state.rows.distinctBy { it.id }.filter { prefs.jobs || it.type != "job" }
+    }
+    LaunchedEffect(
+        list,
+        state.kind,
+        rows.size,
+        state.more,
+        state.loading,
+        state.error,
+        onPrefetch
+    ) {
+        if (onPrefetch == null || rows.isEmpty() || !state.more ||
+            state.loading || state.error != null
+        ) {
+            return@LaunchedEffect
+        }
+        snapshotFlow {
+            val last = list.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+            last != null && last >= rows.lastIndex - 4
+        }.collect { nearEnd ->
+            if (nearEnd) onPrefetch()
+        }
+    }
+    var tabsVisible by remember { mutableStateOf(true) }
+    val scroll = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y != 0f) {
+                    tabsVisible = available.y > 0f || !list.canScrollBackward
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    Column(Modifier.nestedScroll(scroll)) {
+        AnimatedVisibility(
+            visible = tabsVisible,
+            enter = slideInVertically { -it } + expandVertically(),
+            exit = slideOutVertically { -it } + shrinkVertically()
+        ) {
+            FeedTabs(state.kind, prefs.jobs, onKind)
+        }
         PullToRefreshBox(
             isRefreshing = state.loading && state.rows.isNotEmpty(),
             onRefresh = onRefresh
         ) {
-            LazyColumn(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = list,
+                contentPadding = PaddingValues(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
                 items(
-                    state.rows.distinctBy {
-                        it.id
-                    }.filter { prefs.jobs || it.type != "job" },
+                    rows,
                     key = { it.id },
                     contentType = { it.type }
                 ) {

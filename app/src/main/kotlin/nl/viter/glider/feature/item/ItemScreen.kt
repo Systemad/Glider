@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 import nl.viter.glider.shared.data.*
 import nl.viter.glider.shared.ui.ItemRow
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ItemScreen(
     id: Long,
@@ -40,7 +40,6 @@ fun ItemScreen(
     onActions: (HnItem) -> Unit,
     onItem: (Long) -> Unit
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val prefs by store.state.collectAsStateWithLifecycle()
     val model: ItemViewModel =
         viewModel(
@@ -50,6 +49,23 @@ fun ItemScreen(
             }
         )
     val state by model.state.collectAsStateWithLifecycle()
+    DiscussionContent(id, state, prefs, onBack, onUser, onActions, onItem, model::refresh)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun DiscussionContent(
+    id: Long,
+    state: ItemState,
+    prefs: Preferences,
+    onBack: () -> Unit,
+    onUser: (String) -> Unit,
+    onActions: (HnItem) -> Unit,
+    onItem: (Long) -> Unit,
+    onRetry: () -> Unit
+) {
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val preview = androidx.compose.ui.platform.LocalInspectionMode.current
     var collapsed by rememberSaveable(id) { mutableStateOf(listOf<Long>()) }
     var collapseAll by rememberSaveable(id) { mutableStateOf(false) }
     var threadMenu by remember { mutableStateOf(false) }
@@ -58,27 +74,6 @@ fun ItemScreen(
     }
     var query by rememberSaveable(id) { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
-    var similar by remember(id) { mutableStateOf(emptyList<HnItem>()) }
-    var similarError by remember(id) { mutableStateOf(false) }
-    var showSimilar by rememberSaveable(id) { mutableStateOf(false) }
-    LaunchedEffect(showSimilar, state.item?.url) {
-        if (showSimilar) {
-            state.item?.takeIf { it.url.isNotBlank() }?.let { root ->
-                try {
-                    similar = repository.similar(root)
-                    similarError = false
-                } catch (
-                    e: CancellationException
-                ) {
-                    throw e
-                } catch (e: Exception) {
-                    similarError =
-                        true
-                }
-            }
-        }
-    }
-    val context = LocalContext.current
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val visible = remember(state.comments, collapsed, query) {
@@ -188,7 +183,7 @@ fun ItemScreen(
             }
             LazyColumn(state = list, contentPadding = PaddingValues(bottom = 136.dp)) {
                 item(key = "root", contentType = "root") {
-                    Column(Modifier.padding(horizontal = 16.dp)) {
+                    Column(Modifier.padding(horizontal = 8.dp)) {
                         state.item?.let { root ->
                             root.parent?.let { parent ->
                                 OutlinedButton(onClick = {
@@ -199,68 +194,76 @@ fun ItemScreen(
                                     Text("Load parent")
                                 }
                             }
-                            ItemRow(
-                                root,
-                                prefs.copy(
-                                    metadata = true,
-                                    visited = emptySet()
-                                ),
-                                onItem,
-                                onUser,
-                                onActions,
-                                showBody = true,
-                                showHost = false,
-                                onClick = {
-                                    onActions(root)
-                                }
-                            )
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.large,
+                                color = MaterialTheme.colorScheme.surfaceContainer
+                            ) {
+                                ItemRow(
+                                    root,
+                                    prefs.copy(
+                                        metadata = true,
+                                        visited = emptySet()
+                                    ),
+                                    onItem,
+                                    onUser,
+                                    onActions,
+                                    compact = true,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    showBody = true,
+                                    showHost = false,
+                                    onClick = {
+                                        onActions(root)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
                 items(visible, key = { it.item.id }, contentType = { it.item.type }) { row ->
-                    ThreadComment(
-                        row,
-                        prefs,
-                        row.item.id in collapsed,
-                        descendantCounts[row.item.id] ?: 0,
-                        state.item?.by,
-                        onItem,
-                        onUser,
-                        onActions
-                    ) {
-                        collapseAll = false
-                        collapsed =
-                            if (row.item.id in
-                                collapsed
-                            ) {
-                                collapsed - row.item.id
-                            } else {
-                                collapsed + row.item.id
+                    Column(if (preview) Modifier else Modifier.animateItem()) {
+                        ThreadComment(
+                            row,
+                            prefs,
+                            row.item.id in collapsed,
+                            descendantCounts[row.item.id] ?: 0,
+                            state.item?.by,
+                            onItem,
+                            onUser,
+                            onActions
+                        ) {
+                            collapseAll = false
+                            collapsed =
+                                if (row.item.id in
+                                    collapsed
+                                ) {
+                                    collapsed - row.item.id
+                                } else {
+                                    collapsed + row.item.id
+                                }
+                            val index = visible.indexOfFirst { it.item.id == row.item.id } + 1
+                            scope.launch {
+                                val offset =
+                                    list.layoutInfo.visibleItemsInfo.firstOrNull {
+                                        it.index == index
+                                    }?.offset ?: 0
+                                if (offset < 0) list.animateScrollToItem(index)
                             }
-                        val index = visible.indexOfFirst { it.item.id == row.item.id } + 1
-                        scope.launch {
-                            val offset =
-                                list.layoutInfo.visibleItemsInfo.firstOrNull {
-                                    it.index == index
-                                }?.offset ?: 0
-                            if (offset < 0) list.animateScrollToItem(index)
                         }
                     }
                 }
                 item {
-                    if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (state.loading) {
+                        Box(
+                            Modifier.fillMaxWidth().padding(24.dp),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            LoadingIndicator()
+                        }
+                    }
                     state.error?.let {
                         Text(it)
-                        TextButton(onClick = { model.refresh() }) { Text("Retry") }
-                    }
-                    if (state.item?.url?.isNotBlank() == true) {
-                        TextButton(onClick = {
-                            showSimilar = !showSimilar
-                        }) { Text(if (showSimilar) "Hide similar stories" else "Similar stories") }
-                        if (showSimilar) {
-                            similar.forEach { ItemRow(it, prefs, onItem, onUser, onActions) }
-                            if (similarError) Text("Could not load similar stories")
-                        }
+                        TextButton(onClick = onRetry) { Text("Retry") }
                     }
                 }
             }

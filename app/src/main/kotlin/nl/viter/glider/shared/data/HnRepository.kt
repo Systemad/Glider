@@ -84,6 +84,70 @@ class HnRepository @Inject constructor(private val cache: ItemCache) {
             return cache.dao.get(id)?.let { json.decodeFromString<HnItem>(it.json) } ?: throw e
         }
     }
+    suspend fun discussion(root: HnItem): List<Pair<HnItem, Int>> =
+        withContext(Dispatchers.Default) {
+            try {
+                val tree = json.parseToJsonElement(
+                    client.get("https://hn.algolia.com/api/v1/items/${root.id}").bodyAsText()
+                ).jsonObject
+                val rows = mutableListOf<Pair<HnItem, Int>>()
+                fun append(node: JsonObject, depth: Int) {
+                    val children = node["children"]?.jsonArray.orEmpty()
+                    val item = HnItem(
+                        id = node.getValue("id").jsonPrimitive.long,
+                        type = "comment",
+                        by = node["author"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        text = node["text"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        time = node["created_at_i"]?.jsonPrimitive?.longOrNull ?: 0,
+                        parent = node["parent_id"]?.jsonPrimitive?.longOrNull,
+                        kids = children.map { it.jsonObject.getValue("id").jsonPrimitive.long }
+                    )
+                    rows += item to depth
+                    children.forEach { append(it.jsonObject, depth + 1) }
+                }
+                val children = tree["children"]?.jsonArray.orEmpty()
+                val order = root.kids.withIndex().associate { it.value to it.index }
+                children.sortedBy {
+                    order[it.jsonObject.getValue("id").jsonPrimitive.long] ?: Int.MAX_VALUE
+                }.forEach { append(it.jsonObject, 1) }
+                val present = children.map {
+                    it.jsonObject.getValue("id").jsonPrimitive.long
+                }.toSet()
+                val missing = (root.parts + root.kids).filterNot { it in present }
+                val extra = officialDiscussion(missing)
+                buildList {
+                    if (missing.isEmpty()) {
+                        addAll(rows)
+                    } else {
+                        // Merge complete branches in HN's ranked order.
+                        val all = (rows + extra).associateBy { it.first.id }
+                        fun appendIds(ids: List<Long>, depth: Int) {
+                            for (id in ids) {
+                                val item = all[id]?.first ?: continue
+                                add(item to depth)
+                                appendIds(item.parts + item.kids, depth + 1)
+                            }
+                        }
+                        appendIds(root.parts + root.kids, 1)
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                officialDiscussion(root.parts + root.kids)
+            }
+        }
+    private suspend fun officialDiscussion(ids: List<Long>): List<Pair<HnItem, Int>> =
+        coroutineScope {
+            ids.map { id ->
+                async {
+                    val child = requests.withPermit { item(id) } ?: error("Comment unavailable")
+                    listOf(child to 1) + officialDiscussion(child.parts + child.kids).map {
+                        it.first to it.second + 1
+                    }
+                }
+            }.awaitAll().flatten()
+        }
     suspend fun user(name: String): HnUser = json.decodeFromString(
         client.get("$BASE/user/${name.encodeURLPathPart()}.json").bodyAsText()
     )

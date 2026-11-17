@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
@@ -94,11 +95,17 @@ internal fun parseHnText(html: String): List<HnTextBlock> {
 }
 
 @Composable
-fun RichText(html: String) {
-    val blocks by produceState<List<HnTextBlock>>(emptyList(), html) {
+fun RichText(html: String, selectable: Boolean = true) {
+    val preview = LocalInspectionMode.current
+    val initial = remember(html, preview) {
+        if (preview) parseHnText(html) else emptyList()
+    }
+    val blocks by produceState(initial, html, preview) {
+        if (preview) return@produceState
+        value = emptyList()
         value = withContext(Dispatchers.Default) { parseHnText(html) }
     }
-    SelectionContainer {
+    val content: @Composable () -> Unit = {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             blocks.forEach { block ->
                 when (block.kind) {
@@ -131,6 +138,11 @@ fun RichText(html: String) {
                 }
             }
         }
+    }
+    if (selectable) {
+        SelectionContainer(content = content)
+    } else {
+        content()
     }
 }
 

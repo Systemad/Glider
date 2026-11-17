@@ -3,6 +3,8 @@ package nl.viter.glider.feature.stories
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -23,6 +25,24 @@ class FeedViewModel(private val repository: HnRepository) : ViewModel() {
     private var offset = 0
     private var ids = emptyList<Long>()
     private var request: kotlinx.coroutines.Job? = null
+    private var prefetched: Deferred<List<HnItem>?>? = null
+
+    fun prefetch() {
+        val current = mutable.value
+        if (current.loading || current.error != null || offset >= ids.size || prefetched != null) {
+            return
+        }
+        val batch = ids.drop(offset).take(20)
+        prefetched = viewModelScope.async {
+            try {
+                repository.items(batch)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
     init {
         load(refresh = true)
     }
@@ -36,6 +56,10 @@ class FeedViewModel(private val repository: HnRepository) : ViewModel() {
     }
     fun load(refresh: Boolean = false) {
         if (mutable.value.loading && !refresh) return
+        if (refresh) {
+            prefetched?.cancel()
+            prefetched = null
+        }
         request?.cancel()
         request = viewModelScope.launch {
             mutable.value = mutable.value.copy(loading = true, error = null)
@@ -45,7 +69,8 @@ class FeedViewModel(private val repository: HnRepository) : ViewModel() {
                     offset = 0
                 }
                 val existing = if (refresh) emptyList() else mutable.value.rows
-                val next = repository.items(ids.drop(offset).take(20))
+                val next = prefetched?.await() ?: repository.items(ids.drop(offset).take(20))
+                prefetched = null
                 offset += 20
                 mutable.value =
                     mutable.value.copy(

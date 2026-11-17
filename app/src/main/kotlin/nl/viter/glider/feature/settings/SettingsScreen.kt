@@ -95,8 +95,15 @@ fun SettingsScreen(store: AppStore, onBack: () -> Unit) {
                     },
                     onClick = { choice = "Title lines" }
                 )
-                SettingSwitch("Story favicons", value = prefs.favicons) { v ->
+                SettingSwitch("Story link icons", value = prefs.favicons) { v ->
                     store.update { it.copy(favicons = v) }
+                }
+                SettingSwitch(
+                    "Article thumbnails",
+                    "Load preview images from article sites when you open a discussion",
+                    prefs.articleThumbnails
+                ) { enabled ->
+                    store.update { it.copy(articleThumbnails = enabled) }
                 }
                 SettingSwitch("Story metadata", "Always shows on some pages", prefs.metadata) { v ->
                     store.update { it.copy(metadata = v) }
@@ -181,7 +188,12 @@ fun SettingsScreen(store: AppStore, onBack: () -> Unit) {
                         Text("App version")
                     },
                     supportingContent = {
-                        Text("3.0.0-dev")
+                        Text(
+                            context.packageManager.getPackageInfo(
+                                context.packageName,
+                                0
+                            ).versionName.orEmpty()
+                        )
                     },
                     colors = ListItemDefaults.colors(
                         containerColor = MaterialTheme.colorScheme.surface
@@ -202,20 +214,28 @@ fun SettingsScreen(store: AppStore, onBack: () -> Unit) {
                         } else if (title ==
                             "Source code"
                         ) {
-                            "https://github.com/Mosc/Glider"
+                            "https://github.com/Systemad/Glider"
                         } else {
                             ""
                         },
                         onClick = {
                             openLink(
                                 context,
-                                "https://github.com/Mosc/Glider/$path",
+                                "https://github.com/Systemad/Glider/$path",
                                 prefs.customTabs
                             )
                         },
                         trailing = { Icon(Icons.AutoMirrored.Outlined.OpenInNew, null) }
                     )
                 }
+                SettingRow(
+                    "Original app",
+                    description = "Glider by Marcel Dopita (Mosc)",
+                    onClick = {
+                        openLink(context, "https://github.com/Mosc/Glider", prefs.customTabs)
+                    },
+                    trailing = { Icon(Icons.AutoMirrored.Outlined.OpenInNew, null) }
+                )
             }
         }
     }

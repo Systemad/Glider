@@ -48,7 +48,7 @@ fun importFlutterPreferences(context: Context): Preferences {
         avatars = bool("show_user_avatars", true), metadata = bool("show_story_metadata", true),
         favicons = bool(
             "show_favicons",
-            true
+            false
         ),
         actions = bool("use_action_buttons", false), jobs = bool("show_jobs", true),
         threadNavigation = bool(

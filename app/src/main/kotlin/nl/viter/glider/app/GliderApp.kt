@@ -210,7 +210,7 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
         }
         actionItem?.let { selected ->
             ModalBottomSheet(onDismissRequest = { actionItem = null }) {
-                Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                ItemActionSheetContent(selected.title.ifBlank { selected.by }) {
                     fun runAction(kind: String) {
                         actionItem = null
                         scope.launch {
@@ -229,18 +229,21 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                             }
                         }
                     }
-                    Text(
-                        selected.title.ifBlank {
-                            selected.by
-                        },
-                        Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    TextButton(onClick = {
+                    ItemActionRow(Icons.Outlined.ChatBubbleOutline, onClick = {
                         actionItem = null
                         item(selected.id)
-                    }) { Text("Open discussion") }
-                    TextButton(onClick = {
+                    }) {
+                        Text(
+                            if (selected.type ==
+                                "comment"
+                            ) {
+                                "Open comment thread"
+                            } else {
+                                "Open discussion"
+                            }
+                        )
+                    }
+                    ItemActionRow(Icons.Outlined.Done, onClick = {
                         store.update {
                             it.copy(
                                 visited = if (selected.id in
@@ -255,7 +258,7 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                         actionItem = null
                     }) { Text(if (selected.id in prefs.visited) "Mark unread" else "Mark read") }
                     if (selected.url.isNotBlank()) {
-                        TextButton(onClick = {
+                        ItemActionRow(Icons.Outlined.Link, onClick = {
                             actionItem = null
                             nl.viter.glider.shared.ui.openLink(
                                 context,
@@ -267,7 +270,9 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                     if (!selected.deleted &&
                         selected.type != "job"
                     ) {
-                        TextButton(onClick = { runAction("favorite") }) {
+                        ItemActionRow(Icons.Outlined.FavoriteBorder, onClick = {
+                            runAction("favorite")
+                        }) {
                             Text(
                                 if (selected.id in
                                     prefs.favorites
@@ -283,7 +288,9 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                         selected.by != prefs.username &&
                         selected.type != "job"
                     ) {
-                        TextButton(onClick = { runAction("upvote") }) {
+                        ItemActionRow(Icons.Outlined.ArrowUpward, onClick = {
+                            runAction("upvote")
+                        }) {
                             Text(
                                 if (selected.id in
                                     prefs.upvoted
@@ -295,7 +302,9 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                             )
                         }
                         if (prefs.downvoting) {
-                            TextButton(onClick = { runAction("downvote") }) {
+                            ItemActionRow(Icons.Outlined.ArrowDownward, onClick = {
+                                runAction("downvote")
+                            }) {
                                 Text(
                                     if (selected.id in
                                         prefs.downvoted
@@ -307,7 +316,7 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                                 )
                             }
                         }
-                        TextButton(onClick = { runAction("flag") }) {
+                        ItemActionRow(Icons.Outlined.Flag, onClick = { runAction("flag") }) {
                             Text(
                                 if (selected.id in
                                     prefs.flagged
@@ -322,7 +331,7 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                     if (!selected.deleted && selected.type != "job" &&
                         prefs.username.isNotBlank()
                     ) {
-                        TextButton(onClick = {
+                        ItemActionRow(Icons.Outlined.Reply, onClick = {
                             actionItem = null
                             push("editor:Reply:${selected.id}")
                         }) { Text("Reply") }
@@ -331,12 +340,12 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                         selected.type in listOf("story", "comment") &&
                         System.currentTimeMillis() / 1000 - selected.time < 7200
                     ) {
-                        TextButton(onClick = {
+                        ItemActionRow(Icons.Outlined.Edit, onClick = {
                             actionItem = null
                             push("editor:Edit:${selected.id}")
                         }) { Text("Edit") }
                         if (selected.kids.isEmpty()) {
-                            TextButton(onClick = {
+                            ItemActionRow(Icons.Outlined.Delete, onClick = {
                                 actionItem = null
                                 confirmDelete =
                                     selected
@@ -344,21 +353,20 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                         }
                     }
                     if (selected.text.isNotBlank()) {
-                        TextButton(onClick = {
+                        ItemActionRow(Icons.Outlined.TextFields, onClick = {
                             selectedText = selected.text
                             actionItem =
                                 null
                         }) { Text("Select text") }
                     }
-                    TextButton(onClick = {
+                    ItemActionRow(Icons.Outlined.ContentCopy, onClick = {
                         valueAction = selected to false
                         actionItem = null
                     }) { Text("Copy...") }
-                    TextButton(onClick = {
+                    ItemActionRow(Icons.Outlined.Share, onClick = {
                         valueAction = selected to true
                         actionItem = null
                     }) { Text("Share...") }
-                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
@@ -440,5 +448,44 @@ fun GliderApp(store: AppStore, repository: HnRepository, deepLink: String? = nul
                     null
             }) { Text("Close") }
         })
+    }
+}
+
+@Composable
+internal fun ItemActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    label: @Composable () -> Unit
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
+            label()
+        }
+    }
+}
+
+@Composable
+internal fun ItemActionSheetContent(title: String, actions: @Composable () -> Unit) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Text(
+            title,
+            Modifier.padding(start = 36.dp, end = 8.dp, bottom = 8.dp),
+            style = MaterialTheme.typography.titleMedium
+        )
+        HorizontalDivider(Modifier.padding(bottom = 4.dp))
+        actions()
+        Spacer(Modifier.height(24.dp))
     }
 }

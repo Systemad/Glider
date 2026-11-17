@@ -12,10 +12,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import kotlin.math.pow
 
 @Composable
-fun IndentedContent(depth: Int, rainbow: Boolean = false, content: @Composable () -> Unit) {
+fun IndentedContent(
+    depth: Int,
+    rainbow: Boolean = false,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
     val colors = MaterialTheme.colorScheme
     val dark = colors.surface.luminance() < 0.5f
     fun threadColor(level: Int): Color = if (rainbow) {
@@ -27,12 +31,12 @@ fun IndentedContent(depth: Int, rainbow: Boolean = false, content: @Composable (
             else -> colors.tertiary
         }
     }
-    val indent = if (depth == 0) 0.dp else (16 * depth.toDouble().pow(0.75) - 1).dp
+    val indent = (16 * depth).dp
     Box(
-        Modifier.fillMaxWidth().drawWithContent {
+        modifier.fillMaxWidth().drawWithContent {
             drawContent()
             fun x(level: Int): Float {
-                val position = (16 * level.toDouble().pow(0.75) - 1).dp.toPx()
+                val position = (16 * level).dp.toPx()
                 return if (layoutDirection ==
                     LayoutDirection.Ltr
                 ) {
