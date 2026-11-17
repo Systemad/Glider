@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                     else -> com.materialkolor.PaletteStyle.TonalSpot
                 }
             )
-            var colors = if (prefs.dynamic && android.os.Build.VERSION.SDK_INT >= 31) {
+            var colors = if (prefs.dynamic) {
                 if (dark) dynamicDarkColorScheme(this) else dynamicLightColorScheme(this)
             } else {
                 customColors

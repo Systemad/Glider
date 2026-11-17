@@ -11,7 +11,7 @@ android {
     compileSdk = 37
     defaultConfig {
         applicationId = "io.github.systemad.glider"
-        minSdk = 24
+        minSdk = 31
         targetSdk = 37
         versionCode = 50
         versionName = "0.1"

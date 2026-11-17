@@ -2,9 +2,9 @@
 
 # Glider for Hacker News
 
-Android client built with Kotlin, Jetpack Compose, and Material 3.
+Android 12+ client built with Kotlin, Jetpack Compose, and Material 3.
 
-Open this repository root in Android Studio. Requires Android SDK 37 and Build Tools 37.0.0.
+Open this repository root in Android Studio. Build with JDK 25 and Android SDK 37.
 
 ```powershell
 # From the repository root
