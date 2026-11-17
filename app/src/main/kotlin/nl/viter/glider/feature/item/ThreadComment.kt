@@ -6,12 +6,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.LayoutDirection
@@ -34,6 +34,11 @@ internal fun ThreadComment(
     onToggle: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
+    val threadSurface = if (colors.surface.luminance() < colors.onSurface.luminance()) {
+        colors.surfaceContainer
+    } else {
+        colors.surfaceContainerLow
+    }
     val preview = androidx.compose.ui.platform.LocalInspectionMode.current
     val animation = if (preview) Modifier else Modifier.animateContentSize()
     Column {
@@ -43,7 +48,7 @@ internal fun ThreadComment(
         nl.viter.glider.shared.ui.IndentedContent(
             if (row.item.type == "pollopt") 0 else (row.depth - 1).coerceAtLeast(0),
             rainbow = prefs.rainbowThreads,
-            modifier = Modifier.background(colors.surfaceContainerLow)
+            modifier = Modifier.background(threadSurface)
         ) {
             Surface(
                 modifier = animation,
@@ -52,7 +57,7 @@ internal fun ThreadComment(
                         4.dp
                     )
                 } else {
-                    colors.surfaceContainerLow
+                    threadSurface
                 }
             ) {
                 ItemRow(
@@ -63,7 +68,7 @@ internal fun ThreadComment(
                     collapsedCount = descendantCount,
                     storyAuthor = storyAuthor,
                     onClick = if (row.item.deleted) ({}) else onToggle,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    contentHorizontalPadding = 16.dp
                 )
             }
         }

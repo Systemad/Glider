@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -197,7 +198,13 @@ internal fun DiscussionContent(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = MaterialTheme.shapes.large,
-                                color = MaterialTheme.colorScheme.surfaceContainer
+                                color = with(MaterialTheme.colorScheme) {
+                                    if (surface.luminance() < onSurface.luminance()) {
+                                        surfaceContainerHigh
+                                    } else {
+                                        surfaceContainer
+                                    }
+                                }
                             ) {
                                 ItemRow(
                                     root,

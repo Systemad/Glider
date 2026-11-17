@@ -129,7 +129,8 @@ fun ItemRow(
     storyAuthor: String? = null,
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.onSurface,
-    compact: Boolean = false
+    compact: Boolean = false,
+    contentHorizontalPadding: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val host = remember(item.url) { Uri.parse(item.url).host.orEmpty() }
     val hidden = remember(item.title, item.by, host, prefs.blocked, prefs.words, prefs.domains) {
@@ -151,7 +152,7 @@ fun ItemRow(
             onClick?.invoke() ?: onItem(item.id)
         }, onLongClick = {
             onActions(item)
-        }).padding(vertical = if (compact) 6.dp else 8.dp),
+        }).padding(horizontal = contentHorizontalPadding, vertical = if (compact) 6.dp else 8.dp),
         verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 8.dp)
     ) {
         if (!hidden && item.title.isNotBlank()) StoryTitle(item, prefs, host, showHost, compact)
