@@ -8,6 +8,14 @@ local.properties
 *.lock
 *.jks
 key.properties
+*.keystore
+.secrets
+.secrets.*
+.env
+.env.*
+/enc/
+.act-artifacts/
+/app/release/
 
 # Editors and operating systems
 .idea/
@@ -21,3 +29,4 @@ key.properties
 # Local planning and visual references
 /plans/
 /screenshots/
+bootstrap/

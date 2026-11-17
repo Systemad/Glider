@@ -9,11 +9,11 @@ android {
     namespace = "nl.viter.glider"
     compileSdk = 37
     defaultConfig {
-        applicationId = "nl.viter.glider"
+        applicationId = "io.github.systemad.glider"
         minSdk = 24
         targetSdk = 37
         versionCode = 50
-        versionName = "3.0.0-dev"
+        versionName = "0.1"
     }
     buildFeatures { compose = true }
     compileOptions {

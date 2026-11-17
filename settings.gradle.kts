@@ -11,5 +11,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "GliderNative"
+rootProject.name = "Glider"
 include(":app")

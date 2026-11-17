@@ -1,0 +1,161 @@
+name: Local signed Android release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing remote release tag, for example v3.0.0
+        required: true
+        type: string
+      commit:
+        description: Full 40-character commit SHA referenced by the tag
+        required: true
+        type: string
+      create_draft:
+        description: Upload the signed APK to a draft GitHub Release
+        default: false
+        type: boolean
+      local_source:
+        description: Build an exact local commit before pushing its release tag
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_COMMIT: ${{ inputs.commit }}
+      RELEASE_REPOSITORY: Systemad/Glider
+    steps:
+      - name: Load local workspace
+        if: ${{ inputs.local_source == true || inputs.local_source == 'true' }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          clean: false
+
+      - name: Fetch exact release sources
+        env:
+          LOCAL_SOURCE: ${{ inputs.local_source }}
+        run: |
+          set -euo pipefail
+          test "${ACT:-}" = true
+          [[ "$RELEASE_TAG" =~ ^v?[0-9]+\.[0-9]+(\.[0-9]+)?([.-][A-Za-z0-9.-]+)?$ ]]
+          [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          if [[ "$LOCAL_SOURCE" == true ]]; then
+            mkdir -p "$RUNNER_TEMP/glider-release"
+            git archive "$RELEASE_COMMIT" | tar -xf - -C "$RUNNER_TEMP/glider-release"
+          else
+            git clone --depth 1 --branch "$RELEASE_TAG" \
+              "https://github.com/$RELEASE_REPOSITORY.git" "$RUNNER_TEMP/glider-release"
+            test "$(git -C "$RUNNER_TEMP/glider-release" rev-parse HEAD)" = "$RELEASE_COMMIT"
+          fi
+          echo "PROJECT_DIR=$RUNNER_TEMP/glider-release" >> "$GITHUB_ENV"
+          echo "RELEASE_DIR=$RUNNER_TEMP/glider-release-assets" >> "$GITHUB_ENV"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+
+      - name: Install SDK packages
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
+
+      - name: Check release version and build unsigned APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          set -euo pipefail
+          bash ./gradlew ktlintCheck :app:lintRelease :app:assembleRelease --console=plain
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          metadata = json.loads(Path('app/build/outputs/apk/release/output-metadata.json').read_text())
+          versions = {entry['versionName'] for entry in metadata['elements']}
+          if versions != {os.environ['RELEASE_TAG'].removeprefix('v')}:
+              raise SystemExit('APK versionName must match the release tag without its v prefix')
+          if metadata['applicationId'] == 'nl.viter.glider':
+              raise SystemExit('Choose a unique applicationId for this independent fork before releasing')
+          PY
+
+      - name: Sign and verify APK
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          test -r /run/glider-signing.keystore
+          : "${ANDROID_KEY_ALIAS:?Missing key alias}"
+          : "${ANDROID_STORE_PASSWORD:?Missing store password}"
+          : "${ANDROID_KEY_PASSWORD:?Missing key password}"
+          : "${ANDROID_CERT_SHA256:?Missing expected signing certificate SHA-256}"
+          umask 077
+          mkdir -p "$RELEASE_DIR"
+          tools="$ANDROID_HOME/build-tools/37.0.0"
+          source_apk="$PROJECT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk"
+          output_apk="$RELEASE_DIR/glider-$RELEASE_TAG.apk"
+          "$tools/zipalign" -P 16 -f 4 "$source_apk" "$RUNNER_TEMP/glider-aligned.apk"
+          "$tools/apksigner" sign --ks /run/glider-signing.keystore \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_STORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "$output_apk" "$RUNNER_TEMP/glider-aligned.apk"
+          "$tools/zipalign" -c -P 16 4 "$output_apk"
+          "$tools/apksigner" verify --verbose --print-certs "$output_apk" > "$RUNNER_TEMP/glider-certificate.txt"
+          actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/glider-certificate.txt" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
+          expected=$(printf '%s' "$ANDROID_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
+          [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
+          test "$actual" = "$expected"
+          cd "$RELEASE_DIR"
+          sha256sum "glider-$RELEASE_TAG.apk" > SHA256SUMS
+          printf 'Repository: %s\nTag: %s\nCommit: %s\n' \
+            "$RELEASE_REPOSITORY" "$RELEASE_TAG" "$RELEASE_COMMIT" > SOURCE.txt
+
+      - name: Save signed release and R8 mapping locally
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: glider-signed-release
+          if-no-files-found: error
+          path: |
+            ${{ env.RELEASE_DIR }}/*.apk
+            ${{ env.RELEASE_DIR }}/SHA256SUMS
+            ${{ env.RELEASE_DIR }}/SOURCE.txt
+            ${{ env.PROJECT_DIR }}/app/build/outputs/mapping/release/mapping.txt
+
+      - name: Create draft GitHub Release
+        if: ${{ inputs.create_draft == true || inputs.create_draft == 'true' }}
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: Systemad/Glider
+          tag_name: ${{ inputs.tag }}
+          target_commitish: ${{ inputs.commit }}
+          name: Glider ${{ inputs.tag }}
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            ${{ env.RELEASE_DIR }}/*.apk
+            ${{ env.RELEASE_DIR }}/SHA256SUMS
+            ${{ env.RELEASE_DIR }}/SOURCE.txt
+
+      - name: Remove temporary signing files
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/glider-aligned.apk" \
+            "$RUNNER_TEMP/glider-certificate.txt"
