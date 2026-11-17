@@ -12,6 +12,7 @@ $pathLine = Get-Content -LiteralPath $envPath |
     Where-Object { $_ -match '^ANDROID_KEYSTORE_PATH=' } | Select-Object -First 1
 if (-not $pathLine) { throw 'Set ANDROID_KEYSTORE_PATH in .env.' }
 $keystorePath = ($pathLine -split '=', 2)[1].Trim().Trim('"', "'")
+$keystorePath = $keystorePath.Replace('\', '/')
 if (-not (Test-Path -LiteralPath $keystorePath -PathType Leaf)) {
     throw 'ANDROID_KEYSTORE_PATH does not point to a keystore file.'
 }
