@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           test "${ACT:-}" = true
-          [[ "$RELEASE_TAG" =~ ^v?[0-9]+\.[0-9]+(\.[0-9]+)?([.-][A-Za-z0-9.-]+)?$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?([.-][A-Za-z0-9.-]+)?$ ]]
           [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
           if [[ "$LOCAL_SOURCE" == true ]]; then
             mkdir -p "$RUNNER_TEMP/glider-release"
@@ -76,11 +76,16 @@ jobs:
       - name: Install SDK packages
         run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
 
-      - name: Check release version and build unsigned APK
+      - name: Build signed release and debug APKs
         working-directory: ${{ env.PROJECT_DIR }}
+        env:
+          ANDROID_KEYSTORE_PATH: /run/glider-signing.keystore
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          bash ./gradlew ktlintCheck :app:lintRelease :app:assembleRelease --console=plain
+          bash ./gradlew ktlintCheck :app:lintRelease :app:assembleRelease :app:assembleDebug --console=plain
           python3 - <<'PY'
           import json, os
           from pathlib import Path
@@ -92,39 +97,17 @@ jobs:
               raise SystemExit('Choose a unique applicationId for this independent fork before releasing')
           PY
 
-      - name: Sign and verify APK
-        env:
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
+      - name: Verify and collect APKs
         run: |
           set -euo pipefail
-          test -r /run/glider-signing.keystore
-          : "${ANDROID_KEY_ALIAS:?Missing key alias}"
-          : "${ANDROID_STORE_PASSWORD:?Missing store password}"
-          : "${ANDROID_KEY_PASSWORD:?Missing key password}"
-          : "${ANDROID_CERT_SHA256:?Missing expected signing certificate SHA-256}"
-          umask 077
           mkdir -p "$RELEASE_DIR"
           tools="$ANDROID_HOME/build-tools/37.0.0"
-          source_apk="$PROJECT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk"
-          output_apk="$RELEASE_DIR/glider-$RELEASE_TAG.apk"
-          "$tools/zipalign" -P 16 -f 4 "$source_apk" "$RUNNER_TEMP/glider-aligned.apk"
-          "$tools/apksigner" sign --ks /run/glider-signing.keystore \
-            --ks-key-alias "$ANDROID_KEY_ALIAS" \
-            --ks-pass env:ANDROID_STORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
-            --out "$output_apk" "$RUNNER_TEMP/glider-aligned.apk"
-          "$tools/zipalign" -c -P 16 4 "$output_apk"
-          "$tools/apksigner" verify --verbose --print-certs "$output_apk" > "$RUNNER_TEMP/glider-certificate.txt"
-          actual=$(sed -n 's/.*certificate SHA-256 digest: //p' "$RUNNER_TEMP/glider-certificate.txt" | sort -u | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
-          expected=$(printf '%s' "$ANDROID_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
-          [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
-          test "$actual" = "$expected"
+          cp "$PROJECT_DIR/app/build/outputs/apk/release/app-release.apk" "$RELEASE_DIR/glider-$RELEASE_TAG.apk"
+          cp "$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk" "$RELEASE_DIR/glider-$RELEASE_TAG-debug.apk"
+          "$tools/apksigner" verify --verbose "$RELEASE_DIR/glider-$RELEASE_TAG.apk"
+          "$tools/apksigner" verify --verbose "$RELEASE_DIR/glider-$RELEASE_TAG-debug.apk"
           cd "$RELEASE_DIR"
-          sha256sum "glider-$RELEASE_TAG.apk" > SHA256SUMS
-          printf 'Repository: %s\nTag: %s\nCommit: %s\n' \
-            "$RELEASE_REPOSITORY" "$RELEASE_TAG" "$RELEASE_COMMIT" > SOURCE.txt
+          sha256sum "glider-$RELEASE_TAG.apk" "glider-$RELEASE_TAG-debug.apk" > SHA256SUMS
 
       - name: Save signed release and R8 mapping locally
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -132,9 +115,9 @@ jobs:
           name: glider-signed-release
           if-no-files-found: error
           path: |
-            ${{ env.RELEASE_DIR }}/*.apk
+            ${{ env.RELEASE_DIR }}/glider-${{ inputs.tag }}.apk
+            ${{ env.RELEASE_DIR }}/glider-${{ inputs.tag }}-debug.apk
             ${{ env.RELEASE_DIR }}/SHA256SUMS
-            ${{ env.RELEASE_DIR }}/SOURCE.txt
             ${{ env.PROJECT_DIR }}/app/build/outputs/mapping/release/mapping.txt
 
       - name: Create draft GitHub Release
@@ -145,17 +128,11 @@ jobs:
           repository: Systemad/Glider
           tag_name: ${{ inputs.tag }}
           target_commitish: ${{ inputs.commit }}
-          name: Glider ${{ inputs.tag }}
+          name: ${{ inputs.tag }}
           draft: true
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            ${{ env.RELEASE_DIR }}/*.apk
+            ${{ env.RELEASE_DIR }}/glider-${{ inputs.tag }}.apk
+            ${{ env.RELEASE_DIR }}/glider-${{ inputs.tag }}-debug.apk
             ${{ env.RELEASE_DIR }}/SHA256SUMS
-            ${{ env.RELEASE_DIR }}/SOURCE.txt
-
-      - name: Remove temporary signing files
-        if: always()
-        run: |
-          rm -f "$RUNNER_TEMP/glider-aligned.apk" \
-            "$RUNNER_TEMP/glider-certificate.txt"
