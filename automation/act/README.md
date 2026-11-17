@@ -17,7 +17,7 @@ The keystore stays outside the repo. `.env` is ignored by Git.
 After committing/pushing the release source and matching version tag:
 
 ```powershell
-./automation/act/release.ps1 -Tag v0.1 -Commit FULL_SHA -CreateDraft
+./automation/act/release.ps1 -Tag v0.1-beta -Commit FULL_SHA -CreateDraft
 ```
 
 Gradle signs the release APK. The debug APK uses Android's debug key and a separate

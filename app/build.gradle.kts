@@ -13,8 +13,8 @@ android {
         applicationId = "io.github.systemad.glider"
         minSdk = 31
         targetSdk = 37
-        versionCode = 50
-        versionName = "0.1"
+        versionCode = 51
+        versionName = "0.1-beta"
     }
     buildFeatures { compose = true }
     compileOptions {

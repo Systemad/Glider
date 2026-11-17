@@ -130,6 +130,7 @@ jobs:
           target_commitish: ${{ inputs.commit }}
           name: ${{ inputs.tag }}
           draft: true
+          prerelease: ${{ contains(inputs.tag, '-beta') }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
