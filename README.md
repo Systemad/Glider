@@ -1,4 +1,4 @@
-## WARNING: VIBE CODED SLOP
+## WARNING: VIBE CODED SLOP, HEAVY AI USAGE
 
 # Glider for Hacker News
 
