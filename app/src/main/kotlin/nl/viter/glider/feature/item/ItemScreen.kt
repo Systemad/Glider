@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -65,11 +64,9 @@ internal fun DiscussionContent(
     onItem: (Long) -> Unit,
     onRetry: () -> Unit
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val preview = androidx.compose.ui.platform.LocalInspectionMode.current
     var collapsed by rememberSaveable(id) { mutableStateOf(listOf<Long>()) }
     var collapseAll by rememberSaveable(id) { mutableStateOf(false) }
-    var threadMenu by remember { mutableStateOf(false) }
     LaunchedEffect(collapseAll, state.comments) {
         if (collapseAll) collapsed = state.comments.map { it.item.id }
     }
@@ -109,28 +106,22 @@ internal fun DiscussionContent(
         }
         counts
     }
-    Scaffold(modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection), topBar = {
-        TopAppBar(scrollBehavior = scrollBehavior, title = {
+    Scaffold(topBar = {
+        TopAppBar(title = {
         }, navigationIcon = {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
         }, actions = {
-            Box {
-                IconButton(onClick = { threadMenu = true }) {
-                    Icon(Icons.Outlined.UnfoldMore, "Comment controls")
+            IconButton(
+                enabled = state.comments.any { it.item.type == "comment" },
+                onClick = {
+                    collapseAll = !collapseAll
+                    collapsed = if (collapseAll) state.comments.map { it.item.id } else emptyList()
                 }
-                DropdownMenu(threadMenu, onDismissRequest = { threadMenu = false }) {
-                    DropdownMenuItem(text = { Text("Collapse all") }, onClick = {
-                        collapseAll = true
-                        collapsed = state.comments.map { it.item.id }
-                        threadMenu = false
-                        scope.launch { list.scrollToItem(0) }
-                    })
-                    DropdownMenuItem(text = { Text("Expand all") }, onClick = {
-                        collapseAll = false
-                        collapsed = emptyList()
-                        threadMenu = false
-                    })
-                }
+            ) {
+                Icon(
+                    if (collapseAll) Icons.Outlined.UnfoldMore else Icons.Outlined.UnfoldLess,
+                    if (collapseAll) "Expand all comments" else "Collapse all comments"
+                )
             }
             IconButton(onClick = {
                 searching =
@@ -228,7 +219,9 @@ internal fun DiscussionContent(
                     }
                 }
                 items(visible, key = { it.item.id }, contentType = { it.item.type }) { row ->
-                    Column(if (preview) Modifier else Modifier.animateItem()) {
+                    Column(
+                        if (preview) Modifier else Modifier.animateItem(placementSpec = null)
+                    ) {
                         ThreadComment(
                             row,
                             prefs,
@@ -248,14 +241,6 @@ internal fun DiscussionContent(
                                 } else {
                                     collapsed + row.item.id
                                 }
-                            val index = visible.indexOfFirst { it.item.id == row.item.id } + 1
-                            scope.launch {
-                                val offset =
-                                    list.layoutInfo.visibleItemsInfo.firstOrNull {
-                                        it.index == index
-                                    }?.offset ?: 0
-                                if (offset < 0) list.animateScrollToItem(index)
-                            }
                         }
                     }
                 }

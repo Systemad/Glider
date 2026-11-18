@@ -80,7 +80,8 @@ private fun DiscussionPreview() {
                     type = "comment",
                     by = story.by,
                     time = now - 3000,
-                    text = "It remembers which branches you collapsed, too."
+                    text = "<blockquote>I miss saved scroll positions.</blockquote>" +
+                        "<p>It remembers which branches you collapsed, too.</p>"
                 ),
                 depth = 2
             ),

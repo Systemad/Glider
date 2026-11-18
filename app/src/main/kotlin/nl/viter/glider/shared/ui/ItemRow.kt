@@ -172,7 +172,7 @@ fun ItemRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            item.deleted -> Text("[deleted]", style = MaterialTheme.typography.bodySmall)
+            item.deleted -> Unit
 
             showBody && !collapsed && item.text.isNotBlank() -> RichText(
                 item.text,
@@ -203,7 +203,7 @@ private fun ItemMetadata(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (collapsed) {
+        if (collapsed && (!item.deleted || collapsedCount > 0)) {
             MetadataValue(
                 Icons.Outlined.AddCircleOutline,
                 if (collapsedCount >
@@ -252,13 +252,14 @@ private fun ItemMetadata(
             )
         }
         Box(Modifier.weight(1f)) {
-            if (item.by.isNotBlank()) Author(item.by, prefs, onUser, storyAuthor, compact)
-        }
-        if (item.by ==
-            "cats4ever"
-        ) {
-            Badge(containerColor = MaterialTheme.colorScheme.tertiaryContainer) {
-                Text("purrfect")
+            if (item.deleted) {
+                Text(
+                    "[deleted]",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else if (item.by.isNotBlank()) {
+                Author(item.by, prefs, onUser, storyAuthor, compact)
             }
         }
         Text(

@@ -96,14 +96,19 @@ internal fun parseHnText(html: String): List<HnTextBlock> {
 
 @Composable
 fun RichText(html: String, selectable: Boolean = true) {
-    val preview = LocalInspectionMode.current
-    val initial = remember(html, preview) {
-        if (preview) parseHnText(html) else emptyList()
+    // A lazy comment row needs its final text height on its first measure.
+    val measureWithText = !selectable || LocalInspectionMode.current
+    val initial = remember(html, measureWithText) {
+        if (measureWithText) parseHnText(html) else emptyList()
     }
-    val blocks by produceState(initial, html, preview) {
-        if (preview) return@produceState
-        value = emptyList()
-        value = withContext(Dispatchers.Default) { parseHnText(html) }
+    val blocks = if (measureWithText) {
+        initial
+    } else {
+        val parsed by produceState(initial, html) {
+            value = emptyList()
+            value = withContext(Dispatchers.Default) { parseHnText(html) }
+        }
+        parsed
     }
     val content: @Composable () -> Unit = {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -113,8 +118,8 @@ fun RichText(html: String, selectable: Boolean = true) {
 
                     TextBlockKind.Quote -> Surface(
                         shape = RoundedCornerShape(12.dp),
-                        tonalElevation = 1.dp,
-                        shadowElevation = 1.dp
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ) {
                         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                             HtmlParagraph(block.content)

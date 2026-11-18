@@ -67,7 +67,7 @@ internal fun ThreadComment(
                     collapsed = collapsed,
                     collapsedCount = descendantCount,
                     storyAuthor = storyAuthor,
-                    onClick = if (row.item.deleted) ({}) else onToggle,
+                    onClick = if (row.item.deleted && descendantCount == 0) ({}) else onToggle,
                     contentHorizontalPadding = 16.dp
                 )
             }
