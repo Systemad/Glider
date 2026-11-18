@@ -123,7 +123,11 @@ internal fun SettingsContent(
                     ) { enabled ->
                         onUpdate { it.copy(articleThumbnails = enabled) }
                     }
-                    SettingSwitch("Story metadata", "Always shows on some pages", prefs.metadata) { v ->
+                    SettingSwitch(
+                        "Story metadata",
+                        "Always shows on some pages",
+                        prefs.metadata
+                    ) { v ->
                         onUpdate { it.copy(metadata = v) }
                     }
                     SettingSwitch("User avatars", value = prefs.avatars) { v ->
@@ -184,21 +188,25 @@ internal fun SettingsContent(
             }
             item(key = "data") {
                 SettingsGroup("Data") {
-                    SettingRow("Export favorites", description = "Shares favorites as JSON", onClick = {
-                        context.startActivity(
-                            Intent.createChooser(
-                                Intent(
-                                    Intent.ACTION_SEND
-                                ).setType(
-                                    "application/json"
-                                ).putExtra(
-                                    Intent.EXTRA_TEXT,
-                                    prefs.favorites.joinToString(",", "[", "]")
-                                ),
-                                "Export favorites"
+                    SettingRow(
+                        "Export favorites",
+                        description = "Shares favorites as JSON",
+                        onClick = {
+                            context.startActivity(
+                                Intent.createChooser(
+                                    Intent(
+                                        Intent.ACTION_SEND
+                                    ).setType(
+                                        "application/json"
+                                    ).putExtra(
+                                        Intent.EXTRA_TEXT,
+                                        prefs.favorites.joinToString(",", "[", "]")
+                                    ),
+                                    "Export favorites"
+                                )
                             )
-                        )
-                    })
+                        }
+                    )
                     SettingRow("Clear read stories", onClick = { clear = true })
                 }
             }
