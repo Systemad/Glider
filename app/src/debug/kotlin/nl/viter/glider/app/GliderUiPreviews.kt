@@ -1,18 +1,16 @@
 package nl.viter.glider.app
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import nl.viter.glider.feature.item.CommentRow
 import nl.viter.glider.feature.item.DiscussionContent
 import nl.viter.glider.feature.item.ItemState
-import nl.viter.glider.feature.settings.SettingSwitch
+import nl.viter.glider.feature.settings.SettingsContent
 import nl.viter.glider.feature.stories.FeedContent
 import nl.viter.glider.feature.stories.FeedState
 import nl.viter.glider.shared.data.HnItem
@@ -129,19 +127,23 @@ private fun DiscussionPreview() {
     }
 }
 
-@PreviewLightDark
+@Preview(name = "Settings · Light", widthDp = 393, heightDp = 852, showSystemUi = true)
+@Preview(
+    name = "Settings · Dark",
+    widthDp = 393,
+    heightDp = 852,
+    showSystemUi = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
-private fun AppearanceSettingsPreview() {
+private fun GroupedSettingsPreview() {
     PreviewSurface {
-        Column {
-            SettingSwitch("Dynamic color", value = true, onChange = {})
-            SettingSwitch(
-                "Rainbow comment threads",
-                description = "Use different colors for comment threads",
-                value = false,
-                onChange = {}
-            )
-        }
+        SettingsContent(
+            prefs = Preferences(),
+            version = "0.1-beta",
+            onBack = {},
+            onUpdate = {}
+        )
     }
 }
 
