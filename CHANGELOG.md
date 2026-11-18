@@ -2,13 +2,12 @@
 
 ## v0.1-beta
 
-Initial beta of Glider's native Android rewrite. It brings the Hacker News reader to Kotlin and Jetpack Compose with a refreshed Material 3 interface. Requires Android 12 or newer.
+Initial beta of Glider’s Android rewrite in Kotlin and Jetpack Compose
 
-- Added Android dynamic colors, light and dark themes, and grouped settings with easier-to-scan controls.
-- Refined discussions with clearer reply nesting, optional rainbow thread lines, more readable quotes, and a single button to collapse or expand all comments.
-- Improved discussion scrolling and kept comment text selection available from the long-press actions menu.
-- Improved loading with bulk thread fetching, a cache for recently opened discussions, and feed prefetching behind the **Show more** button.
-- Added optional article thumbnails in discussions.
-- Gave the debug APK its own name and icon so it can be identified alongside the release build.
+- Raised the minimum to Android 12 (API 31) and the target to Android 17 (API 37)
+- Updated to Material Design 3 Expressive
+- Redesigned the front page, settings, and discussions with optional rainbow thread lines
+- Improved performance and scrolling
+- Added optional article thumbnails
 
-**Known limitation:** Hacker News login is untested in this beta.
+**Hacker News login is untested**
